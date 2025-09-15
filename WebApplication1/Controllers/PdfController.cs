@@ -1,6 +1,8 @@
 ﻿namespace policyBot.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
+    using System.IO;
+    using System.Collections.Generic;
 
     using policyBot.Services;
 
@@ -34,6 +36,35 @@
                 TotalChunks = chunks.Count,
                 Chunks = chunks
             });
+        }
+
+        [HttpGet("all")]
+        public IActionResult GetAllPdfChunks(int chunkSize = 500, int overlap = 50)
+        {
+            var pdfDirectory = Path.Combine(Directory.GetCurrentDirectory(), "", "pdf");
+            if (!Directory.Exists(pdfDirectory))
+            {
+                return NotFound("PDF directory not found.");
+            }
+
+            var result = new List<object>();
+            var pdfFiles = Directory.GetFiles(pdfDirectory, "*.pdf");
+
+            foreach (var pdfPath in pdfFiles)
+            {
+                using var stream = System.IO.File.OpenRead(pdfPath);
+                string text = _pdfReader.ExtractText(stream);
+                var chunks = TextChunker.ChunkText(text, chunkSize, overlap);
+
+                result.Add(new
+                {
+                    FileName = Path.GetFileName(pdfPath),
+                    TotalChunks = chunks.Count,
+                    Chunks = chunks
+                });
+            }
+
+            return Ok(result);
         }
     }
 }
