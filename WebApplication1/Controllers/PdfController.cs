@@ -11,10 +11,12 @@
     public class PdfController : ControllerBase
     {
         private readonly PdfReaderService _pdfReader;
+        private readonly IEmbeddingService _embeddingService;
 
-        public PdfController(PdfReaderService pdfReader)
+        public PdfController(PdfReaderService pdfReader, IEmbeddingService embeddingService)
         {
             _pdfReader = pdfReader;
+            _embeddingService = embeddingService;
         }
 
         [HttpPost("upload")]
@@ -39,7 +41,7 @@
         }
 
         [HttpGet("all")]
-        public IActionResult GetAllPdfChunks(int chunkSize = 500, int overlap = 50)
+        public async Task<IActionResult> GetAllPdfChunks(int chunkSize = 500, int overlap = 50)
         {
             var pdfDirectory = Path.Combine(Directory.GetCurrentDirectory(), "", "pdf");
             if (!Directory.Exists(pdfDirectory))
@@ -55,12 +57,14 @@
                 using var stream = System.IO.File.OpenRead(pdfPath);
                 string text = _pdfReader.ExtractText(stream);
                 var chunks = TextChunker.ChunkText(text, chunkSize, overlap);
+                var embeddings = await _embeddingService.GetEmbeddingsAsync(chunks);
 
                 result.Add(new
                 {
                     FileName = Path.GetFileName(pdfPath),
                     TotalChunks = chunks.Count,
-                    Chunks = chunks
+                    Chunks = chunks,
+                    Embeddings = embeddings
                 });
             }
 

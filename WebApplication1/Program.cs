@@ -1,3 +1,4 @@
+using policyBot.Configuration;
 using policyBot.Services;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<policyBot.Services.PdfReaderService>();
+builder.Services.Configure<EmbeddingSettings>(
+    builder.Configuration.GetSection("Embedding"));
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmbeddingService, OllamaEmbeddingService>();
 
 var app = builder.Build();
 
