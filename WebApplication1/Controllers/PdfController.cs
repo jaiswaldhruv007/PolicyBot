@@ -3,8 +3,10 @@
     using Microsoft.AspNetCore.Mvc;
     using System.IO;
     using System.Collections.Generic;
-
+    using System.Threading.Tasks;
     using policyBot.Services;
+    using Qdrant.Client.Grpc;
+    using System.Linq;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -12,11 +14,13 @@
     {
         private readonly PdfReaderService _pdfReader;
         private readonly IEmbeddingService _embeddingService;
+        private readonly QdrantVectorDb _vectorDb; // Use QdrantVectorDb
 
-        public PdfController(PdfReaderService pdfReader, IEmbeddingService embeddingService)
+        public PdfController(PdfReaderService pdfReader, IEmbeddingService embeddingService, QdrantVectorDb vectorDb)
         {
             _pdfReader = pdfReader;
             _embeddingService = embeddingService;
+            _vectorDb = vectorDb;
         }
 
         [HttpPost("upload")]
@@ -59,16 +63,33 @@
                 var chunks = TextChunker.ChunkText(text, chunkSize, overlap);
                 var embeddings = await _embeddingService.GetEmbeddingsAsync(chunks);
 
+                // Save embeddings to Qdrant vector DB
+                await SaveEmbeddingsToVectorDbAsync(Path.GetFileName(pdfPath), chunks, embeddings);
+
                 result.Add(new
                 {
-                    FileName = Path.GetFileName(pdfPath),
+                    FileName = Path.GetFileName(pdfPath),   
                     TotalChunks = chunks.Count,
                     Chunks = chunks,
-                    Embeddings = embeddings
-                });
+                    Embeddings = embeddings,
+                    SavedTo = "Qdrant collection: pdf_chunks"
+                }); 
             }
 
             return Ok(result);
+        }
+
+        //[HttpGet("chunks")]
+        //public async Task<IActionResult> GetSavedChunks(string? fileName = null)
+        //{
+        //    var chunks = await _vectorDb.GetChunksAsync(fileName);
+        //    return Ok(chunks);
+        //}
+
+        // Save embeddings to Qdrant vector DB
+        private async Task SaveEmbeddingsToVectorDbAsync(string fileName, List<string> chunks, List<List<float>> embeddings)
+        {
+            await _vectorDb.SaveAsync(fileName, chunks, embeddings);
         }
     }
 }

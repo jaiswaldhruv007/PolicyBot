@@ -1,5 +1,7 @@
+using Qdrant.Client;
 using policyBot.Configuration;
 using policyBot.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -13,6 +15,12 @@ builder.Services.Configure<EmbeddingSettings>(
     builder.Configuration.GetSection("Embedding"));
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IEmbeddingService, OllamaEmbeddingService>();
+builder.Services.AddSingleton<InMemoryVectorDb>();
+
+// Add QdrantClient and QdrantVectorDb
+builder.Services.AddSingleton<QdrantClient>(sp =>
+    new QdrantClient(" http://localhost:6333")); // Use your Qdrant endpoint
+builder.Services.AddSingleton<QdrantVectorDb>();
 
 var app = builder.Build();
 
