@@ -79,12 +79,12 @@
             return Ok(result);
         }
 
-        //[HttpGet("chunks")]
-        //public async Task<IActionResult> GetSavedChunks(string? fileName = null)
-        //{
-        //    var chunks = await _vectorDb.GetChunksAsync(fileName);
-        //    return Ok(chunks);
-        //}
+        [HttpGet("chunks")]
+        public async Task<IActionResult> GetSavedChunks(string? fileName = null)
+        {
+            var chunks = await _vectorDb.GetChunksAsync(fileName);
+            return Ok(chunks);
+        }
 
         // Save embeddings to Qdrant vector DB
         private async Task SaveEmbeddingsToVectorDbAsync(string fileName, List<string> chunks, List<List<float>> embeddings)

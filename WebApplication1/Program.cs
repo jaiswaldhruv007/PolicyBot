@@ -19,7 +19,7 @@ builder.Services.AddSingleton<InMemoryVectorDb>();
 
 // Add QdrantClient and QdrantVectorDb
 builder.Services.AddSingleton<QdrantClient>(sp =>
-    new QdrantClient(" http://localhost:6333")); // Use your Qdrant endpoint
+    new QdrantClient("localhost", 6334)); // Use your Qdrant endpoint
 builder.Services.AddSingleton<QdrantVectorDb>();
 
 var app = builder.Build();
