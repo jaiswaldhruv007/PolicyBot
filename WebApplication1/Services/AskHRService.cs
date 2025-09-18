@@ -29,7 +29,7 @@ namespace policyBot.Services
             // Step 3: Evaluate top score
 
             var topResult = searchResults[0];
-            double threshold = 0.70; // tweak based on testing
+            double threshold = 0.56; // tweak based on testing
 
             if (topResult.Score < threshold)
             {

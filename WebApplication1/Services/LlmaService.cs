@@ -60,9 +60,7 @@ namespace policyBot.Services
             }
 
             var responseString = await response.Content.ReadAsStringAsync();
-            var result = JsonConvert.DeserializeObject<OllamaChatResponse>(responseString);
-
-            return result?.Message?.Content ?? string.Empty;
+            return ParseOllamaChatResponse(responseString);
         }
 
         public async Task<string> GetAnswerAsync(string question)
