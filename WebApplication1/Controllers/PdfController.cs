@@ -7,6 +7,7 @@
     using policyBot.Services;
     using Qdrant.Client.Grpc;
     using System.Linq;
+    using policyBot.Repository;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -14,9 +15,9 @@
     {
         private readonly PdfReaderService _pdfReader;
         private readonly IEmbeddingService _embeddingService;
-        private readonly QdrantVectorDb _vectorDb; // Use QdrantVectorDb
+        private readonly IVectorDB _vectorDb; // Use QdrantVectorDb
 
-        public PdfController(PdfReaderService pdfReader, IEmbeddingService embeddingService, QdrantVectorDb vectorDb)
+        public PdfController(PdfReaderService pdfReader, IEmbeddingService embeddingService, IVectorDB vectorDb)
         {
             _pdfReader = pdfReader;
             _embeddingService = embeddingService;
@@ -47,7 +48,7 @@
         [HttpGet("all")]
         public async Task<IActionResult> GetAllPdfChunks(int chunkSize = 500, int overlap = 50)
         {
-            var pdfDirectory = Path.Combine(Directory.GetCurrentDirectory(), "", "pdf");
+            var pdfDirectory = Path.Combine(Directory.GetCurrentDirectory(), "", "pdfs");
             if (!Directory.Exists(pdfDirectory))
             {
                 return NotFound("PDF directory not found.");
@@ -55,28 +56,30 @@
 
             var result = new List<object>();
             var pdfFiles = Directory.GetFiles(pdfDirectory, "*.pdf");
-
-            foreach (var pdfPath in pdfFiles)
+            await _vectorDb.CreateCollectionIfNotExistsAsync(); // Ensure collection exists
+            var tasks = pdfFiles.Select(async pdfPath =>
             {
                 using var stream = System.IO.File.OpenRead(pdfPath);
                 string text = _pdfReader.ExtractText(stream);
                 var chunks = TextChunker.ChunkText(text, chunkSize, overlap);
-                var embeddings = await _embeddingService.GetEmbeddingsAsync(chunks);
+                var embeddings = await _embeddingService.GetEmbeddingAsync(chunks);
 
                 // Save embeddings to Qdrant vector DB
-                await SaveEmbeddingsToVectorDbAsync(Path.GetFileName(pdfPath), chunks, embeddings);
+                await _vectorDb.SaveAsync(Path.GetFileName(pdfPath), chunks, embeddings);
 
-                result.Add(new
+                return new
                 {
-                    FileName = Path.GetFileName(pdfPath),   
+                    FileName = Path.GetFileName(pdfPath),
                     TotalChunks = chunks.Count,
                     Chunks = chunks,
-                    Embeddings = embeddings,
-                    SavedTo = "Qdrant collection: pdf_chunks"
-                }); 
-            }
+                    SavedTo = "Qdrant collection: HR_Policies"
+                };
+            });
 
-            return Ok(result);
+            // Run all tasks in parallel
+            var results = await Task.WhenAll(tasks);
+
+            return Ok(results);
         }
 
         [HttpGet("chunks")]
@@ -84,12 +87,6 @@
         {
             var chunks = await _vectorDb.GetChunksAsync(fileName);
             return Ok(chunks);
-        }
-
-        // Save embeddings to Qdrant vector DB
-        private async Task SaveEmbeddingsToVectorDbAsync(string fileName, List<string> chunks, List<List<float>> embeddings)
-        {
-            await _vectorDb.SaveAsync(fileName, chunks, embeddings);
         }
     }
 }

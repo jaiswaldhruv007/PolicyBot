@@ -35,7 +35,7 @@ namespace policyBot.Services
             _settings = settings.Value;
         }
 
-        public async Task<List<List<float>>> GetEmbeddingsAsync(List<string> chunks)
+        public async Task<List<List<float>>> GetEmbeddingAsync(List<string> chunks)
         {
             if (chunks == null || chunks.Count == 0)
                 return new List<List<float>>();
@@ -64,6 +64,11 @@ namespace policyBot.Services
             var result = JsonConvert.DeserializeObject<OllamaEmbedResponse>(responseString);
 
             return result?.Embeddings ?? new List<List<float>>();
+        }
+        public async Task<List<float>> GetEmbeddingAsync(string chunk)
+        {
+            var embeddings = await GetEmbeddingAsync(new List<string> { chunk });
+            return embeddings.Count > 0 ? embeddings[0] : new List<float>();
         }
     }
 }
