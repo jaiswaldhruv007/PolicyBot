@@ -38,13 +38,16 @@ namespace policyBot.Services
         public async Task<string> GetAnswerAsync(string question, List<string> retrievedChunks)
         {
             var context = string.Join("\n\n", retrievedChunks);
-
+            string systemPrompt = @"You are a helpful HR assistant named AskHR. Only answer questions using the provided context.
+            Do not make up answers.
+            If the answer is not present in the context, respond exactly: ""I could not find this in the HR policies.""
+            Answer clearly and concisely.";
             var requestBody = new
             {
                 model = _llmSettings.Model,
                 messages = new[]
                 {
-                    new { role = "system", content = "You are a helpful assistant that answers based on context." },
+                    new { role = "system", content = systemPrompt },
                     new { role = "user", content = $"Context:\n{context}\n\nQuestion:\n{question}" }
                 }
             };
@@ -70,9 +73,11 @@ namespace policyBot.Services
                 model = _llmSettings.Model, // good for general chit-chat
                 messages = new[]
                 {
-                    new { role = "system", content = "You are a friendly AI assistant. Keep responses short and conversational." },
+                    new { role = "system", content = "You are a friendly AI assistant named AskHR. Keep responses very short and very relevant to the question." },
                     new { role = "user", content = question }
-                }
+                },
+                max_tokens = 50,       // limits length
+                temperature = 0.2       // less creative → more concise
             };
 
             var json = JsonConvert.SerializeObject(requestBody);

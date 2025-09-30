@@ -44,22 +44,29 @@ namespace policyBot.Repository
 
         public async Task SaveAsync(string fileName, List<string> chunks, List<List<float>> embeddings)
         {
-            var points = new List<PointStruct>();
-            for (int i = 0; i < chunks.Count; i++)
+            try
             {
-                var vector = new Vector();
-                vector.Data.AddRange(embeddings[i]);
-
-                var point = new PointStruct
+                var points = new List<PointStruct>();
+                for (int i = 0; i < chunks.Count; i++)
                 {
-                    Id = new PointId { Uuid = Guid.NewGuid().ToString() },
-                    Vectors = new Vectors { Vector = vector }
-                };
-                point.Payload.Add("text", new Value { StringValue = chunks[i] });
-                point.Payload.Add("fileName", new Value { StringValue = fileName });
-                points.Add(point);
+                    var vector = new Vector();
+                    vector.Data.AddRange(embeddings[i]);
+
+                    var point = new PointStruct
+                    {
+                        Id = new PointId { Uuid = Guid.NewGuid().ToString() },
+                        Vectors = new Vectors { Vector = vector }
+                    };
+                    point.Payload.Add("text", new Value { StringValue = chunks[i] });
+                    point.Payload.Add("fileName", new Value { StringValue = fileName });
+                    points.Add(point);
+                }
+                await _client.UpsertAsync(_collectionName, points);
             }
-            await _client.UpsertAsync(_collectionName, points);
+            catch (Exception ex)
+            {
+
+            }
         }
 
         public async Task<List<object>> GetChunksAsync(string fileName = null)
@@ -108,6 +115,10 @@ namespace policyBot.Repository
             );
 
             return results;
+        }
+        public async Task DeleteAllAsync()
+        {
+            await _client.DeleteCollectionAsync(_collectionName);
         }
     }
 }

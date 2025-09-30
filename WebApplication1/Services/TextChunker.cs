@@ -9,16 +9,37 @@ namespace policyBot.Services
             var chunks = new List<string>();
             if (string.IsNullOrWhiteSpace(text)) return chunks;
 
+            // Split by whitespace (words)
+            var words = Regex.Split(text, @"\s+");
             int start = 0;
-            while (start < text.Length)
+
+            while (start < words.Length)
             {
-                int length = Math.Min(chunkSize, text.Length - start);
-                chunks.Add(text.Substring(start, length));
-                start += (chunkSize - overlap); // move forward with overlap
+                int end = Math.Min(start + chunkSize, words.Length);
+                var chunkWords = words[start..end]; // C# 8+ range operator
+                chunks.Add(string.Join(" ", chunkWords));
+
+                // Move start by chunkSize - overlap
+                start += (chunkSize - overlap);
             }
 
             return chunks;
         }
+        // public static List<string> ChunkText(string text, int chunkSize = 500, int overlap = 50)
+        // {
+        //     var chunks = new List<string>();
+        //     if (string.IsNullOrWhiteSpace(text)) return chunks;
+
+        //     int start = 0;
+        //     while (start < text.Length)
+        //     {
+        //         int length = Math.Min(chunkSize, text.Length - start);
+        //         chunks.Add(text.Substring(start, length));
+        //         start += (chunkSize - overlap); // move forward with overlap
+        //     }
+
+        //     return chunks;
+        // }
 
         public class Chunk
         {

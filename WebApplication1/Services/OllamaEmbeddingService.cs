@@ -26,12 +26,12 @@ namespace policyBot.Services
 
     public class OllamaEmbeddingService : IEmbeddingService
     {
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly EmbeddingSettings _settings;
 
         public OllamaEmbeddingService(IHttpClientFactory factory, IOptions<EmbeddingSettings> settings)
         {
-            _httpClient = factory.CreateClient();
+            _httpClientFactory = factory;
             _settings = settings.Value;
         }
 
@@ -40,30 +40,46 @@ namespace policyBot.Services
             if (chunks == null || chunks.Count == 0)
                 return new List<List<float>>();
 
-            // Prepare request body
-            var requestBody = new
+            try
             {
-                model = _settings.Model,
-                input = chunks
-            };
+                // Prepare request body
+                var requestBody = new
+                {
+                    model = _settings.Model,
+                    input = chunks
+                };
 
-            var json = JsonConvert.SerializeObject(requestBody);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var json = JsonConvert.SerializeObject(requestBody);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var _httpClient = _httpClientFactory.CreateClient();
+                _httpClient.Timeout = TimeSpan.FromSeconds(600);
 
-            // Send request with cancellation support
-            using var response = await _httpClient.PostAsync(_settings.BaseUrl, content);
+                // Send request with cancellation support
+                using var response = await _httpClient.PostAsync(_settings.BaseUrl, content);
 
-            if (!response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Ollama API returned {response.StatusCode}: {errorContent}");
+                }
+
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                var result = JsonConvert.DeserializeObject<OllamaEmbedResponse>(responseString);
+
+                return result?.Embeddings ?? new List<List<float>>();
+
+            }
+            catch (Exception ex)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Ollama API returned {response.StatusCode}: {errorContent}");
+                return new List<List<float>>();
             }
 
-            var responseString = await response.Content.ReadAsStringAsync();
 
-            var result = JsonConvert.DeserializeObject<OllamaEmbedResponse>(responseString);
-
-            return result?.Embeddings ?? new List<List<float>>();
+        }
+        public async Task<List<List<float>>> GetEmbeddingAsync(string[] chunks)
+        {
+            return await GetEmbeddingAsync(chunks.ToList());
         }
         public async Task<List<float>> GetEmbeddingAsync(string chunk)
         {

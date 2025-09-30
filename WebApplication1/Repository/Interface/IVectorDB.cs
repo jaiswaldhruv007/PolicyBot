@@ -8,5 +8,6 @@ namespace policyBot.Repository
         Task<List<object>> GetChunksAsync(string fileName = null);
         Task<IReadOnlyList<ScoredPoint>> SearchAsync(List<float> queryVector, ulong limit = 5);
         Task CreateCollectionIfNotExistsAsync();
+        Task DeleteAllAsync();
     }
 }
