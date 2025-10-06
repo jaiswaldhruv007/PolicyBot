@@ -28,7 +28,13 @@ namespace policyBot.Services
             }
             // Step 3: Evaluate top score
 
-            var topResult = searchResults[0];
+
+            var topResult = searchResults.OrderByDescending(r => r.Score).FirstOrDefault();
+            if (topResult == null)
+            {
+                // No results at all → chit-chat
+                return await _llmService.GetAnswerAsync(question);
+            }
             double threshold = 0.56; // tweak based on testing
 
             if (topResult.Score < threshold)
@@ -38,9 +44,10 @@ namespace policyBot.Services
             }
 
             // Step 4: Knowledge query → build context from retrieved docs
-            var retrievedChunks = searchResults
-                .Select(r => r.Payload["text"].ToString())
-                .ToList();
+            var retrievedChunks = new List<string> { topResult.Payload["text"].ToString() };
+            // var retrievedChunks = searchResults
+            //     .Select(r => r.Payload["text"].ToString())
+            //     .ToList();
 
             return await _llmService.GetAnswerAsync(question, retrievedChunks);
 

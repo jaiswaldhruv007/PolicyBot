@@ -68,17 +68,26 @@ namespace policyBot.Services
 
         public async Task<string> GetAnswerAsync(string question)
         {
-            var requestBody = new
-            {
-                model = _llmSettings.Model, // good for general chit-chat
-                messages = new[]
-                {
-                    new { role = "system", content = "You are a friendly AI assistant named AskHR. Keep responses very short and very relevant to the question." },
-                    new { role = "user", content = question }
-                },
-                max_tokens = 50,       // limits length
-                temperature = 0.2       // less creative → more concise
-            };
+var requestBody = new
+{
+    model = _llmSettings.Model, // e.g. "gpt-5"
+    messages = new[]
+    {
+        new {
+            role = "system",
+            content = "You are AskHR, a concise HR chatbot. " +
+                      "If the user's question is general chit-chat, reply normally in ONE short sentence. " +
+                      "If the user's question is not chit-chat or unrelated to HR, reply exactly: \"I could not find this in the HR policies.\""
+        },
+        new {
+            role = "system",
+            content = "IMPORTANT: Your reply must be exactly ONE sentence. Do not write more than one sentence. Do not include emojis or follow-up questions."
+        },
+        new { role = "user", content = question }
+    },
+    max_tokens = 50,
+    temperature = 0.2
+};
 
             var json = JsonConvert.SerializeObject(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
