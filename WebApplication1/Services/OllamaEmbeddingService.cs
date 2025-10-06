@@ -3,6 +3,7 @@ namespace policyBot.Services
     using System.Net.Http;
     using System.Text;
     using Microsoft.Extensions.Options;
+    using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using policyBot.Configuration;
 
@@ -28,11 +29,13 @@ namespace policyBot.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly EmbeddingSettings _settings;
+        private readonly ILogger<OllamaEmbeddingService> _logger;
 
-        public OllamaEmbeddingService(IHttpClientFactory factory, IOptions<EmbeddingSettings> settings)
+        public OllamaEmbeddingService(IHttpClientFactory factory, IOptions<EmbeddingSettings> settings, ILogger<OllamaEmbeddingService> logger)
         {
             _httpClientFactory = factory;
             _settings = settings.Value;
+            _logger = logger;
         }
 
         public async Task<List<List<float>>> GetEmbeddingAsync(List<string> chunks)
@@ -42,6 +45,7 @@ namespace policyBot.Services
 
             try
             {
+                _logger.LogInformation("Requesting embeddings for {ChunkCount} chunks.", chunks.Count);
                 // Prepare request body
                 var requestBody = new
                 {
@@ -60,18 +64,18 @@ namespace policyBot.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Ollama API returned {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
                     throw new HttpRequestException($"Ollama API returned {response.StatusCode}: {errorContent}");
                 }
 
                 var responseString = await response.Content.ReadAsStringAsync();
-
                 var result = JsonConvert.DeserializeObject<OllamaEmbedResponse>(responseString);
-
+                _logger.LogInformation("Embeddings received for {ChunkCount} chunks.", chunks.Count);
                 return result?.Embeddings ?? new List<List<float>>();
-
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting embeddings from Ollama API.");
                 return new List<List<float>>();
             }
 

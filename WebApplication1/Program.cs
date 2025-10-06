@@ -1,9 +1,19 @@
+using Serilog;
 using Qdrant.Client;
 using policyBot.Configuration;
 using policyBot.Services;
 using policyBot.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Serilog configuration
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 

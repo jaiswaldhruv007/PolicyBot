@@ -6,16 +6,19 @@ namespace policyBot.Repository
     using System.Threading.Tasks;
     using System.Linq;
     using System;
+    using Microsoft.Extensions.Logging;
 
     public class QdrantVectorDb : IVectorDB
     {
         private readonly QdrantClient _client;
         private readonly string _collectionName = "HR_Policies";
         private readonly int _vectorSize = 768; // Set this to your embedding dimension
+        private readonly ILogger<QdrantVectorDb> _logger;
 
-        public QdrantVectorDb(QdrantClient client)
+        public QdrantVectorDb(QdrantClient client, ILogger<QdrantVectorDb> logger)
         {
             _client = client;
+            _logger = logger;
         }
 
         public async Task CreateCollectionIfNotExistsAsync()
@@ -34,10 +37,11 @@ namespace policyBot.Repository
                             Distance = Distance.Cosine
                         }
                     );
+                    _logger.LogInformation("Created Qdrant collection: {CollectionName}", _collectionName);
                 }
                 catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
                 {
-                    // Safe to ignore if collection already exists due to race conditions
+                    _logger.LogWarning("Qdrant collection {CollectionName} already exists.", _collectionName);
                 }
             }
         }
@@ -62,10 +66,11 @@ namespace policyBot.Repository
                     points.Add(point);
                 }
                 await _client.UpsertAsync(_collectionName, points);
+                _logger.LogInformation("Saved {Count} chunks for file {FileName} to Qdrant.", chunks.Count, fileName);
             }
             catch (Exception ex)
             {
-
+                _logger.LogError(ex, "Error saving chunks to Qdrant for file {FileName}.", fileName);
             }
         }
 
